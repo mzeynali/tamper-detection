@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from time import sleep
+from termcolor import colored
 from skimage.metrics import structural_similarity as ssim
 
 
@@ -89,7 +90,7 @@ class TamperDetection:
             sleep(0.01)
 
         if self.mat:
-            print("[INFO] TAMPERING DETECTED")
+            print("[INFO] TAMPERING", colored("DETECTED",'red') )
 
 
 if __name__ == "__main__":
