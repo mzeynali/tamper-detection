@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from time import sleep
 from termcolor import colored
+from datetime import datetime
 from skimage.metrics import structural_similarity as ssim
 
 
@@ -20,6 +21,7 @@ class TamperDetection:
         self.thresh_size = int(input_size * 0.001)
         self.base_frame = None
         self.mat = 0
+        self.tampered = 0
         self.tamper_as_sim = False
         self.tampers_history = []
         self.frame_history = []
@@ -35,7 +37,7 @@ class TamperDetection:
             self.frame_history.append(frame)
 
         area = 0
-        tampered = 0
+        self.tampered = 0
         bounding_rect = []
         fgmask = self.fgbg.apply(frame)
         fgmask = cv2.erode(fgmask, self.kernel, iterations=5)
@@ -56,11 +58,11 @@ class TamperDetection:
                 area += area + (bounding_rect[i][2] * bounding_rect[i][3])
 
         if area >= int(frame.shape[0]) * int(frame.shape[1]) / 3:
-            tampered = 1
+            self.tampered = 1
 
         if len(self.tampers_history) >= self.history:
             self.mat = np.convolve(self.tampers_history,
-                                   np.ones(self.history), mode='valid')[0]
+                                   np.ones(self.history), mode='same')[0]
             self.tampers_history.pop(0)
 
         if self.mat or self.tamper_as_sim:  # trigger tamper
@@ -68,14 +70,18 @@ class TamperDetection:
             s = ssim(self.base_frame, frame, multichannel=self.multichannel)
 
             if s < self.similarity_thresh:
-                tampered = 1
+                self.tampered = 1
                 self.tamper_as_sim = True
             else:
                 self.tamper_as_sim = False
         else:
             self.tamper_as_sim = False
+        
+        self.tampers_history.append(self.tampered)
 
-        self.tampers_history.append(tampered)
+        if self.mat and not self.flag:
+            self.mat = 0
+            self.flag = True
 
         if self.show_result:
             if self.mat:
@@ -90,11 +96,12 @@ class TamperDetection:
             sleep(0.01)
 
         if self.mat:
-            print("[INFO] TAMPERING", colored("DETECTED",'red') )
+            print("[INFO] TAMPERING ", colored("DETECTED ", 'red'),
+                  colored(datetime.now(), 'green'))
 
 
 if __name__ == "__main__":
-    td = TamperDetection(show_result=False)
+    td = TamperDetection(show_result=True)
     cap = cv2.VideoCapture(
         "./videos/1.mp4")
 
